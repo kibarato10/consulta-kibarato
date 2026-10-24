@@ -4,42 +4,47 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Consulta de débitos – Lojas Ki Barato</title>
+<meta name="theme-color" content="#141414">
 <style>
-  :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --mut:#667085; --pri:#0b6bcb; --late:#b42318; --lateBg:#fef3f2; --ok:#127a3e; --bd:#e3e6ea; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg:#12151b; --card:#1b2029; --tx:#e7eaf0; --mut:#98a2b3; --pri:#4a9df0; --late:#f97066; --lateBg:#2a1716; --ok:#47cd89; --bd:#2c333f; }
-  }
+  :root { --amarelo:#f7c600; --amareloEsc:#e0a800; --preto:#141414; --ouro:#c9a227; --bg:#141414; --card:#1f1d18; --tx:#f5efd9; --mut:#b5ab8c; --late:#ff8a7a; --lateBg:#3a1d19; --ok:#6fd08f; --bd:#3a3424; color-scheme:dark; }
   * { box-sizing:border-box; }
   [hidden] { display:none !important; }
   body { margin:0; font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--tx); }
-  main { max-width:520px; margin:0 auto; padding:28px 16px 48px; }
-  h1 { font-size:22px; margin:0; }
+  .topo { text-align:center; padding:28px 16px 30px; background:radial-gradient(circle at 50% 0%, rgba(247,198,0,.18), transparent 70%); }
+  .logo { width:180px; height:180px; border-radius:28px; display:block; margin:0 auto; box-shadow:0 0 0 2px var(--ouro), 0 10px 40px rgba(247,198,0,.35); }
+  .sub { margin:18px 0 0; font-weight:700; color:var(--amarelo); }
+  main { max-width:520px; margin:0 auto; padding:0 16px 48px; position:relative; }
   .mut { color:var(--mut); }
-  .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:18px; margin-top:16px; }
-  label { font-weight:600; display:block; margin-bottom:6px; }
-  input { width:100%; font:inherit; font-size:20px; letter-spacing:.5px; padding:12px; border:1px solid var(--bd); border-radius:10px; background:var(--bg); color:var(--tx); }
-  button, .bt { display:block; width:100%; text-align:center; text-decoration:none; font:inherit; font-weight:600; margin-top:12px; background:var(--pri); color:#fff; border:0; border-radius:10px; padding:13px; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--bd); border-radius:16px; padding:18px; margin-top:16px;  }
+  label { font-weight:700; display:block; margin-bottom:6px; }
+  input { width:100%; font:inherit; font-size:20px; letter-spacing:.5px; padding:12px; border:2px solid var(--bd); border-radius:12px; background:var(--bg); color:var(--tx); outline:none; }
+  input:focus { border-color:var(--amarelo); }
+  button, .bt { display:block; width:100%; text-align:center; text-decoration:none; font:inherit; font-weight:700; margin-top:12px; background:var(--preto); color:var(--amarelo); border:2px solid var(--preto); border-radius:12px; padding:13px; cursor:pointer; }
   button:disabled { opacity:.6; }
-  .bt.sec { background:transparent; color:var(--pri); border:1px solid var(--bd); }
+  .bt.sec { background:transparent; color:var(--tx); border-color:var(--bd); }
+  .bt.zap { background:#1f9d55; border-color:#1f9d55; color:#fff; }
   .erro { color:var(--late); margin:10px 0 0; }
-  .total { font-size:30px; font-weight:700; margin:2px 0; }
+  .resumo { border-top:5px solid var(--amarelo); }
+  .total { font-size:32px; font-weight:800; margin:2px 0; }
   .linhas { display:flex; gap:10px; margin-top:10px; }
   .linhas div { flex:1; background:var(--bg); border-radius:10px; padding:8px 10px; }
   .linhas b { display:block; }
   .parc { display:flex; justify-content:space-between; gap:10px; padding:12px 0; border-top:1px solid var(--bd); }
   .parc:first-child { border-top:0; }
-  .parc .v { text-align:right; white-space:nowrap; font-weight:600; }
-  .tag { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:99px; margin-left:4px; }
+  .parc .v { text-align:right; white-space:nowrap; font-weight:700; }
+  .tag { display:inline-block; font-size:12px; font-weight:700; padding:1px 8px; border-radius:99px; margin-left:4px; }
   .tag.late { color:var(--late); background:var(--lateBg); }
   .tag.ok { color:var(--ok); border:1px solid var(--bd); }
   .small { font-size:13px; }
+  summary { cursor:pointer; }
 </style>
 </head>
 <body>
+<header class="topo">
+  <img class="logo" src="logo.jpg" alt="Ki Barato – Aquidauana MS" width="180" height="180">
+  <p class="sub">Consulte suas parcelas do crediário</p>
+</header>
 <main>
-  <h1>Lojas Ki Barato</h1>
-  <p class="mut" style="margin:4px 0 0">Consulte suas parcelas do crediário</p>
-
   <form class="card" id="form">
     <label for="cpf">Digite seu CPF</label>
     <input id="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14">
@@ -47,8 +52,9 @@
     <p class="erro" id="erro" hidden></p>
   </form>
 
+
   <section id="res" hidden>
-    <div class="card">
+    <div class="card resumo">
       <div class="mut" id="ola"></div>
       <div class="mut small" style="margin-top:10px">Total em aberto</div>
       <div class="total" id="tot"></div>
@@ -59,9 +65,16 @@
     </div>
     <div class="card" id="lista"></div>
     <p class="mut small" id="nota"></p>
-    <a class="bt" id="zap" target="_blank" rel="noopener" hidden>Falar com a loja no WhatsApp</a>
+    <a class="bt zap" id="zap" target="_blank" rel="noopener" hidden>Falar com a loja no WhatsApp</a>
     <button class="bt sec" id="sair" type="button">Consultar outro CPF</button>
   </section>
+
+  <details class="card small" id="privacidade">
+    <summary><b>Privacidade (LGPD)</b></summary>
+    <p>Esta consulta é oferecida pelas Lojas Ki Barato, responsáveis pelos seus dados, para que você acompanhe as parcelas do seu crediário (art. 7º, V da Lei 13.709/2018).</p>
+    <p>Os dados ficam protegidos por criptografia e só são abertos no seu aparelho com as informações que você digita. Nada do que você digita é enviado ou guardado. Não usamos cookies nem rastreamento.</p>
+    <p>Para corrigir seus dados, tirar dúvidas ou pedir que sua consulta seja retirada do site, procure qualquer uma das nossas lojas.</p>
+  </details>
 </main>
 <script src="comum.js"></script>
 <script>
