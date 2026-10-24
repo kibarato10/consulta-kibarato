@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consulta de débitos – Lojas Ki Barato</title>
+<style>
+  :root { --bg:#f5f6f8; --card:#fff; --tx:#1d2330; --mut:#667085; --pri:#0b6bcb; --late:#b42318; --lateBg:#fef3f2; --ok:#127a3e; --bd:#e3e6ea; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151b; --card:#1b2029; --tx:#e7eaf0; --mut:#98a2b3; --pri:#4a9df0; --late:#f97066; --lateBg:#2a1716; --ok:#47cd89; --bd:#2c333f; }
+  }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--tx); }
+  main { max-width:520px; margin:0 auto; padding:28px 16px 48px; }
+  h1 { font-size:22px; margin:0; }
+  .mut { color:var(--mut); }
+  .card { background:var(--card); border:1px solid var(--bd); border-radius:14px; padding:18px; margin-top:16px; }
+  label { font-weight:600; display:block; margin-bottom:6px; }
+  input { width:100%; font:inherit; font-size:20px; letter-spacing:.5px; padding:12px; border:1px solid var(--bd); border-radius:10px; background:var(--bg); color:var(--tx); }
+  button, .bt { display:block; width:100%; text-align:center; text-decoration:none; font:inherit; font-weight:600; margin-top:12px; background:var(--pri); color:#fff; border:0; border-radius:10px; padding:13px; cursor:pointer; }
+  button:disabled { opacity:.6; }
+  .bt.sec { background:transparent; color:var(--pri); border:1px solid var(--bd); }
+  .erro { color:var(--late); margin:10px 0 0; }
+  .total { font-size:30px; font-weight:700; margin:2px 0; }
+  .linhas { display:flex; gap:10px; margin-top:10px; }
+  .linhas div { flex:1; background:var(--bg); border-radius:10px; padding:8px 10px; }
+  .linhas b { display:block; }
+  .parc { display:flex; justify-content:space-between; gap:10px; padding:12px 0; border-top:1px solid var(--bd); }
+  .parc:first-child { border-top:0; }
+  .parc .v { text-align:right; white-space:nowrap; font-weight:600; }
+  .tag { display:inline-block; font-size:12px; font-weight:600; padding:1px 8px; border-radius:99px; margin-left:4px; }
+  .tag.late { color:var(--late); background:var(--lateBg); }
+  .tag.ok { color:var(--ok); border:1px solid var(--bd); }
+  .small { font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Lojas Ki Barato</h1>
+  <p class="mut" style="margin:4px 0 0">Consulte suas parcelas do crediário</p>
+
+  <form class="card" id="form">
+    <label for="cpf">Digite seu CPF</label>
+    <input id="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14">
+    <button id="ok">Consultar</button>
+    <p class="erro" id="erro" hidden></p>
+  </form>
+
+  <section id="res" hidden>
+    <div class="card">
+      <div class="mut" id="ola"></div>
+      <div class="mut small" style="margin-top:10px">Total em aberto</div>
+      <div class="total" id="tot"></div>
+      <div class="linhas">
+        <div><span class="mut small">Vencido</span><b id="venc"></b></div>
+        <div><span class="mut small">A vencer</span><b id="aVenc"></b></div>
+      </div>
+    </div>
+    <div class="card" id="lista"></div>
+    <p class="mut small" id="nota"></p>
+    <a class="bt" id="zap" target="_blank" rel="noopener" hidden>Falar com a loja no WhatsApp</a>
+    <button class="bt sec" id="sair" type="button">Consultar outro CPF</button>
+  </section>
+</main>
+<script src="comum.js"></script>
+<script>
+// Número de WhatsApp da loja com DDI e DDD, só dígitos (ex.: 5567999999999). Vazio esconde o botão.
+const WHATSAPP_LOJA = '';
+const LOJAS = { '1': 'Loja 01', '2': 'Loja 02 – Silvandro' };
+
+const $ = id => document.getElementById(id);
+let dados = null;
+
+$('cpf').addEventListener('input', e => {
+  const d = soDigitos(e.target.value).slice(0, 11);
+  e.target.value = d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1-$2');
+});
+
+function erro(t) { $('erro').textContent = t; $('erro').hidden = !t; }
+
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  erro('');
+  const cpf = soDigitos($('cpf').value);
+  if (!cpfValido(cpf)) return erro('CPF inválido. Confira os números.');
+  $('ok').disabled = true;
+  $('ok').textContent = 'Consultando...';
+  try {
+    if (!dados) dados = await (await fetch('dados.json', { cache: 'no-store' })).json();
+    const { id, chave } = await derivar(cpf, deB64(dados.sal));
+    const reg = dados.registros[id];
+    if (!reg) return erro('Não encontramos parcelas em aberto para este CPF. Se achar que há algum engano, fale com a loja.');
+    mostrar(await decifrar(chave, reg));
+  } catch (err) {
+    console.error(err);
+    erro('Não foi possível consultar agora. Tente novamente em instantes.');
+  } finally {
+    $('ok').disabled = false;
+    $('ok').textContent = 'Consultar';
+  }
+});
+
+function mostrar(r) {
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const ps = r.parcelas.slice().sort((a, b) => data(a.venc) - data(b.venc));
+  let vencido = 0, aVencer = 0;
+  $('lista').innerHTML = '';
+  for (const p of ps) {
+    const atrasada = data(p.venc) < hoje;
+    atrasada ? vencido += p.atual : aVencer += p.atual;
+    const el = document.createElement('div');
+    el.className = 'parc';
+    const n = p.parcela.split(' - ')[1] || p.parcela;
+    el.innerHTML = '<div><div><b></b><span class="tag"></span></div><div class="mut small"></div></div><div class="v"></div>';
+    el.querySelector('b').textContent = 'Vence ' + p.venc;
+    const tag = el.querySelector('.tag');
+    tag.textContent = atrasada ? 'Vencida' : 'A vencer';
+    tag.classList.add(atrasada ? 'late' : 'ok');
+    el.querySelector('.small').textContent = 'Parcela ' + n + ' · compra de ' + p.venda + ' · ' + (LOJAS[p.loja] || 'Loja ' + p.loja) +
+      (p.juros > 0 ? ' · inclui ' + moeda(p.juros) + ' de juros' : '');
+    el.querySelector('.v').textContent = moeda(p.atual);
+    $('lista').appendChild(el);
+  }
+  $('ola').textContent = 'Olá, ' + r.nome.split(' ')[0].charAt(0) + r.nome.split(' ')[0].slice(1).toLowerCase() + '!';
+  $('tot').textContent = moeda(vencido + aVencer);
+  $('venc').textContent = moeda(vencido);
+  $('aVenc').textContent = moeda(aVencer);
+  $('nota').textContent = 'Valores atualizados em ' + dados.atualizadoEm + '. Pagamentos feitos depois dessa data ainda não aparecem. O valor final é confirmado no caixa.';
+  if (WHATSAPP_LOJA) {
+    $('zap').href = 'https://wa.me/' + WHATSAPP_LOJA + '?text=' + encodeURIComponent('Olá! Gostaria de falar sobre minhas parcelas do crediário.');
+    $('zap').hidden = false;
+  }
+  $('form').hidden = true;
+  $('res').hidden = false;
+}
+
+$('sair').addEventListener('click', () => {
+  $('cpf').value = '';
+  $('res').hidden = true;
+  $('form').hidden = false;
+  $('cpf').focus();
+});
+</script>
+</body>
+</html>
