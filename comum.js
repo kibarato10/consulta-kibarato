@@ -1,5 +1,5 @@
 // Funções compartilhadas entre a página do cliente (index.html) e a do lojista (gerar.html).
-// Os dados de cada cliente ficam criptografados com uma chave derivada do CPF:
+// Os dados de cada cliente ficam criptografados com uma chave derivada do CPF e da data de nascimento:
 // quem abre o arquivo dados.json não consegue ler nomes, CPFs ou valores.
 
 const ITERACOES = 600000;
@@ -34,9 +34,19 @@ function hex(bytes) {
   return Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// A partir do CPF e do "sal" do arquivo, gera o identificador do registro e a chave AES.
-async function derivar(cpf, sal) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(soDigitos(cpf)), 'PBKDF2', false, ['deriveBits']);
+// "d/m/aaaa", "dd/mm/aaaa" ou Date -> "ddmmaaaa"; vazio se não for uma data válida.
+function nascDigitos(v) {
+  if (v instanceof Date) v = String(v.getDate()).padStart(2, '0') + '/' + String(v.getMonth() + 1).padStart(2, '0') + '/' + v.getFullYear();
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(String(v || '').trim());
+  if (!m) return '';
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  if (d.getDate() !== Number(m[1]) || d.getMonth() !== Number(m[2]) - 1 || d.getFullYear() < 1900 || d > new Date()) return '';
+  return m[1].padStart(2, '0') + m[2].padStart(2, '0') + m[3];
+}
+
+// A partir do CPF, da data de nascimento e do "sal" do arquivo, gera o identificador do registro e a chave AES.
+async function derivar(cpf, nasc, sal) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(soDigitos(cpf) + nascDigitos(nasc)), 'PBKDF2', false, ['deriveBits']);
   const bits = new Uint8Array(await crypto.subtle.deriveBits(
     { name: 'PBKDF2', hash: 'SHA-256', salt: sal, iterations: ITERACOES }, base, 512));
   const chave = await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-GCM', false, ['encrypt', 'decrypt']);

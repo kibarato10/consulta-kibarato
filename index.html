@@ -48,6 +48,8 @@
   <form class="card" id="form">
     <label for="cpf">Digite seu CPF</label>
     <input id="cpf" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14">
+    <label for="nasc" style="margin-top:14px">Data de nascimento</label>
+    <input id="nasc" inputmode="numeric" autocomplete="off" placeholder="dd/mm/aaaa" maxlength="10">
     <button id="ok">Consultar</button>
     <p class="erro" id="erro" hidden></p>
   </form>
@@ -72,7 +74,7 @@
   <details class="card small" id="privacidade">
     <summary><b>Privacidade (LGPD)</b></summary>
     <p>Esta consulta é oferecida pelas Lojas Ki Barato, responsáveis pelos seus dados, para que você acompanhe as parcelas do seu crediário (art. 7º, V da Lei 13.709/2018).</p>
-    <p>Os dados ficam protegidos por criptografia e só são abertos no seu aparelho com as informações que você digita. Nada do que você digita é enviado ou guardado. Não usamos cookies nem rastreamento.</p>
+    <p>Os dados ficam protegidos por criptografia e só são abertos no seu aparelho com o CPF e a data de nascimento que você digita. Nada do que você digita é enviado ou guardado. Não usamos cookies nem rastreamento.</p>
     <p>Para corrigir seus dados, tirar dúvidas ou pedir que sua consulta seja retirada do site, procure qualquer uma das nossas lojas.</p>
   </details>
 </main>
@@ -90,6 +92,11 @@ $('cpf').addEventListener('input', e => {
   e.target.value = d.replace(/^(\d{3})(\d)/, '$1.$2').replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1-$2');
 });
 
+$('nasc').addEventListener('input', e => {
+  const d = soDigitos(e.target.value).slice(0, 8);
+  e.target.value = d.replace(/^(\d{2})(\d)/, '$1/$2').replace(/^(\d{2})\/(\d{2})(\d)/, '$1/$2/$3');
+});
+
 function erro(t) { $('erro').textContent = t; $('erro').hidden = !t; }
 
 $('form').addEventListener('submit', async e => {
@@ -97,13 +104,15 @@ $('form').addEventListener('submit', async e => {
   erro('');
   const cpf = soDigitos($('cpf').value);
   if (!cpfValido(cpf)) return erro('CPF inválido. Confira os números.');
+  const nasc = $('nasc').value;
+  if (!nascDigitos(nasc)) return erro('Data de nascimento inválida. Digite no formato dd/mm/aaaa.');
   $('ok').disabled = true;
   $('ok').textContent = 'Consultando...';
   try {
     if (!dados) dados = await (await fetch('dados.json', { cache: 'no-store' })).json();
-    const { id, chave } = await derivar(cpf, deB64(dados.sal));
+    const { id, chave } = await derivar(cpf, nasc, deB64(dados.sal));
     const reg = dados.registros[id];
-    if (!reg) return erro('Não encontramos parcelas em aberto para este CPF. Se achar que há algum engano, fale com a loja.');
+    if (!reg) return erro('Não encontramos parcelas em aberto para este CPF e data de nascimento. Confira os dados ou fale com a loja.');
     mostrar(await decifrar(chave, reg));
   } catch (err) {
     console.error(err);
@@ -150,6 +159,7 @@ function mostrar(r) {
 
 $('sair').addEventListener('click', () => {
   $('cpf').value = '';
+  $('nasc').value = '';
   $('res').hidden = true;
   $('form').hidden = false;
   $('cpf').focus();
